@@ -56,11 +56,12 @@ void        ft_usleep(long long time_in_ms, t_table *table);
 
 void        heap_push(t_heap *heap, int coder_id, long long priority);
 void        heap_pop(t_heap *heap);
+void        heap_pop_id(t_heap *heap, int coder_id);
 int         is_coder_next(t_heap *heap, int coder_id);
 long long   get_priority(t_coder *coder);
 
 void        log_action(t_coder *coder, char *message);
-void        think_action(t_coder *coder);
+void        debug_action(t_coder *coder);
 void        refactor_action(t_coder *coder);
 int         compile_action(t_coder *coder);
 

@@ -7,10 +7,8 @@ long long   get_priority(t_coder *coder)
     if (coder->table->scheduler == 0)
         return (get_time_in_ms());
 
-    pthread_mutex_lock(&coder->table->stop_lock);
     priority = coder->last_compile + coder->table->time_to_burnout;
-    pthread_mutex_unlock(&coder->table->stop_lock);
-    return (priority);
+    return (priority - get_time_in_ms());
 }
 
 static void    swap_nodes(t_node *a, t_node *b)
@@ -81,13 +79,17 @@ void    heap_pop(t_heap *heap)
 
 int is_coder_next(t_heap *heap, int coder_id)
 {
-    int result;
-
-    result = 0;
     pthread_mutex_lock(&heap->lock);
-    if (heap->size > 0 && heap->nodes[0].coder_id == coder_id)
-        result = 1;
+    if (heap->size == 0)
+    {
+        pthread_mutex_unlock(&heap->lock);
+        return (0);
+    }
+    if (heap->nodes[0].coder_id == coder_id)
+    {
+        pthread_mutex_unlock(&heap->lock);
+        return (1);
+    }
     pthread_mutex_unlock(&heap->lock);
-
-    return (result);
+    return (0);
 }

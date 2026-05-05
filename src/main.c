@@ -56,14 +56,17 @@ int main(int argc, char **argv)
 
         i++;
     }
-
+    
     i = 0;
     while (i < table.number_of_coders)
     {
+        if (table.coders[i].id % 2 == 0)
+            usleep(200);
         pthread_create(&table.coders[i].thread_id, NULL, &coder_routine, &table.coders[i]);
         i++;
     }
     pthread_create(&monitor, NULL, &monitor_routine, &table);
+    pthread_join(monitor, NULL);
 
     i = 0;
     while (i < table.number_of_coders)
@@ -71,7 +74,6 @@ int main(int argc, char **argv)
         pthread_join(table.coders[i].thread_id, NULL);
         i++;
     }
-    pthread_join(monitor, NULL);
 
     i = 0;
     while (i < table.number_of_coders)

@@ -4,22 +4,20 @@ void    log_action(t_coder *coder, char *message)
 {
     long long   timestamp;
     
+    timestamp = get_time_in_ms() - coder->table->start_time;
     pthread_mutex_lock(&coder->table->write_lock);
     pthread_mutex_lock(&coder->table->stop_lock);
     
     if (!coder->table->stop_sim)
-    {
-        timestamp = get_time_in_ms() - coder->table->start_time;
         printf("%lld %d %s\n", timestamp, coder->id, message);
-    }
 
     pthread_mutex_unlock(&coder->table->stop_lock);
     pthread_mutex_unlock(&coder->table->write_lock);
 }
 
-void    think_action(t_coder *coder)
+void    debug_action(t_coder *coder)
 {
-    log_action(coder, "is thinking");
+    log_action(coder, "is debugging");
 }
 
 void    refactor_action(t_coder *coder)
@@ -31,11 +29,11 @@ void    refactor_action(t_coder *coder)
 static int  grab_dongle(t_coder *coder, int dongle_id)
 {
     t_heap      *heap;
-    long long   priority;
+    int         i;
 
     heap = &coder->table->dongle_queues[dongle_id];
-    priority = get_priority(coder);
-    heap_push(heap, coder->id, priority);
+    heap_push(heap, coder->id, get_priority(coder));
+    i = 0;
 
     while (1)
     {
@@ -50,38 +48,72 @@ static int  grab_dongle(t_coder *coder, int dongle_id)
         if (is_coder_next(heap, coder->id))
         {
             pthread_mutex_lock(&coder->table->dongle_locks[dongle_id]);
+            heap_pop(heap);
             return (1);
         }
-        usleep(100);
+        if (++i >= 10)
+        {
+            heap_pop(heap);
+            heap_push(heap, coder->id, get_priority(coder));
+            i = 0;
+        }
+        usleep(50);
     }
 }
 
 int compile_action(t_coder *coder)
 {
-    if (!grab_dongle(coder, coder->left_dongle))
+    int first;
+    int second;
+
+    if (coder->id % 2 == 0)
+    {
+        first = coder->right_dongle;
+        second = coder->left_dongle;
+    }
+    else
+    {
+        first = coder->left_dongle;
+        second = coder->right_dongle;
+    }
+    if (!grab_dongle(coder, first))
         return (0);
     log_action(coder, "has taken a dongle");
 
-    if (!grab_dongle(coder, coder->right_dongle))
+    if (coder->table->number_of_coders == 1)
     {
-        pthread_mutex_unlock(&coder->table->dongle_locks[coder->left_dongle]);
-        heap_pop(&coder->table->dongle_queues[coder->left_dongle]);
+        while (1)
+        {
+            pthread_mutex_lock(&coder->table->stop_lock);
+            if (coder->table->stop_sim)
+            {
+                pthread_mutex_unlock(&coder->table->stop_lock);
+                break;
+            }
+            pthread_mutex_unlock(&coder->table->stop_lock);
+            usleep(500);
+        }
+        pthread_mutex_unlock(&coder->table->dongle_locks[first]);
+        heap_pop(&coder->table->dongle_queues[first]);
+        return (0);
+    }
+    if (!grab_dongle(coder, second))
+    {
+        pthread_mutex_unlock(&coder->table->dongle_locks[first]);
+        heap_pop(&coder->table->dongle_queues[first]);
         return (0);
     }
     log_action(coder, "has taken a dongle");
 
-    log_action(coder, "is compiling");
     pthread_mutex_lock(&coder->table->stop_lock);
     coder->last_compile = get_time_in_ms();
     pthread_mutex_unlock(&coder->table->stop_lock);
+    log_action(coder, "is compiling");
     ft_usleep(coder->table->time_to_compile, coder->table);
     coder->compiles_done++;
 
-    pthread_mutex_unlock(&coder->table->dongle_locks[coder->left_dongle]);
-    heap_pop(&coder->table->dongle_queues[coder->left_dongle]);
-
-    pthread_mutex_unlock(&coder->table->dongle_locks[coder->right_dongle]);
-    heap_pop(&coder->table->dongle_queues[coder->right_dongle]);
+    pthread_mutex_unlock(&coder->table->dongle_locks[first]);
+    pthread_mutex_unlock(&coder->table->dongle_locks[second]);
 
     return (1);
 }

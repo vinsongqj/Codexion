@@ -21,9 +21,11 @@ void    *coder_routine(void *arg)
         }
         pthread_mutex_unlock(&table->stop_lock);
 
-        think_action(coder);
+        debug_action(coder);
         if (!compile_action(coder))
             break;
+        
+        refactor_action(coder);
 
         pthread_mutex_lock(&table->stop_lock);
         if (table->number_of_compiles_required != -1 &&
@@ -33,7 +35,6 @@ void    *coder_routine(void *arg)
             break;
         }
         pthread_mutex_unlock(&table->stop_lock);
-        refactor_action(coder);
     }
     return (NULL);
 }
@@ -46,7 +47,6 @@ void    *monitor_routine(void *arg)
     int     is_done;
 
     table = (t_table *)arg;
-    ft_usleep(table->time_to_burnout / 2, table);
 
     while (1)
     {
@@ -79,6 +79,7 @@ void    *monitor_routine(void *arg)
             table->all_finished = 1;
             table->stop_sim = 1;
             pthread_mutex_unlock(&table->stop_lock);
+            usleep(5000);
             return (NULL);
         }
     usleep(1000);
