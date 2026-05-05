@@ -1,9 +1,13 @@
 NAME = codexion
 CC = cc 
-CFLAGS = -Wall -Wextra -Werror -pthread
-SRCS = src/main.c src/actions.c src/scheduler.c src/threads.c src/utils.c
-OBJS = $(SRCS:.c=.o)
-HEADER = codexion.h 
+CFLAGS = -Wall -Wextra -Werror -pthread -Iinclude
+SRC_DIR = src
+OBJ_DIR = obj
+INC_DIR = include
+SRCS_FILES = main.c actions.c scheduler.c threads.c utils.c
+SRCS = $(addprefix $(SRC_DIR)/, $(SRCS_FILES))
+OBJS = $(addprefix $(OBJ_DIR)/, $(SRCS_FILES:.c=.o))
+HEADER = $(INC_DIR)/codexion.h 
 
 GREEN = \033[0;32m
 RED = \033[0;31m
@@ -15,15 +19,16 @@ $(NAME): $(OBJS)
 		@$(CC) $(CFLAGS) $(OBJS) -o $(NAME)
 		@echo "$(GREEN)Codexion compiled successfully$(RESET)"
 
-src/%.o: %.c	$(HEADER)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(HEADER)
+			@mkdir -p $(OBJ_DIR)
 			@$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-		@rm -f $(OBJS)
+		@rm -rf $(OBJ_DIR)
 		@echo "$(RED)Objects removed$(RESET)"
 	
 fclean:	clean
-		@rm -f $(NAME)
+		@rm -rf $(NAME)
 		@echo "$(RED)Build files cleaned$(RESET)"
 
 re: fclean all
