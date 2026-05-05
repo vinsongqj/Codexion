@@ -1,7 +1,7 @@
 NAME = codexion
 CC = cc 
 CFLAGS = -Wall -Wextra -Werror -pthread
-SRCS = main.c actions.c scheduler.c threads.c utils.c
+SRCS = src/main.c src/actions.c src/scheduler.c src/threads.c src/utils.c
 OBJS = $(SRCS:.c=.o)
 HEADER = codexion.h 
 
@@ -15,8 +15,8 @@ $(NAME): $(OBJS)
 		@$(CC) $(CFLAGS) $(OBJS) -o $(NAME)
 		@echo "$(GREEN)Codexion compiled successfully$(RESET)"
 
-%.o: %.c $(HEADER)
-		@$(CC) $(CFLAGS) -c $< -o $@
+src/%.o: %.c	$(HEADER)
+			@$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 		@rm -f $(OBJS)
