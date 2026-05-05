@@ -24,10 +24,29 @@ long long   ft_atoll(const char *str)
     return (res * sign);
 }
 
-long long   get_time_in_ms(void);
+long long   get_time_in_ms(void)
 {
     struct timeval  tv;
     
-    gettimeofday(&tv, NULL);
+    if (gettimeofday(&tv, NULL) == -1)
+        return (0);
     return ((tv.tv_sec * 1000LL) + (tv.tv_usec / 1000));
+}
+
+void    ft_usleep(long long time_in_ms, t_table *table)
+{
+    long long   start_time;
+
+    start_time = get_time_in_ms();
+    while ((get_time_in_ms() - start_time) < time_in_ms)
+    {
+        pthread_mutex_lock(&table->stop_lock);
+        if (table->stop_sim)
+        {
+            pthread_mutex_unlock(&table->stop_lock);
+            break;
+        }
+        pthread_mutex_unlock(&table->stop_lock);
+        usleep(200);
+    }
 }

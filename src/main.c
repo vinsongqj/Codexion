@@ -2,8 +2,9 @@
 
 int main(int argc, char **argv)
 {
-    t_table table;
-    int     i;
+    t_table     table;
+    pthread_t   monitor;
+    int         i;
 
     if (argc != 9)
     {
@@ -30,13 +31,22 @@ int main(int argc, char **argv)
 
     table.dongle_locks = malloc(sizeof(pthread_mutex_t) * table.number_of_coders);
     table.coders = malloc(sizeof(t_coder) * table.number_of_coders);
-    if (!table.dongle_locks || !table.coders)
+    table.dongle_queues = malloc(sizeof(t_heap) * table.number_of_coders);
+    if (!table.dongle_locks || !table.coders || !table.dongle_queues)
         return (1);
+
+    pthread_mutex_init(&table.write_lock, NULL);
+    pthread_mutex_init(&table.stop_lock, NULL);
+    table.start_time = get_time_in_ms();
 
     i = 0;
     while (i < table.number_of_coders)
     {
         pthread_mutex_init(&table.dongle_locks[i], NULL);
+        pthread_mutex_init(&table.dongle_queues[i].lock, NULL);
+        table.dongle_queues[i].nodes = malloc(sizeof(t_node) * table.number_of_coders);
+        table.dongle_queues[i].size = 0;
+
         table.coders[i].id = i + 1;
         table.coders[i].table = &table;
         table.coders[i].compiles_done = 0;
@@ -46,8 +56,6 @@ int main(int argc, char **argv)
 
         i++;
     }
-    pthread_mutex_init(&table.write_lock, NULL);
-    pthread_mutex_init(&table.stop_lock, NULL);
 
     i = 0;
     while (i < table.number_of_coders)
@@ -55,6 +63,7 @@ int main(int argc, char **argv)
         pthread_create(&table.coders[i].thread_id, NULL, &coder_routine, &table.coders[i]);
         i++;
     }
+    pthread_create(&monitor, NULL, &monitor_routine, &table);
 
     i = 0;
     while (i < table.number_of_coders)
@@ -62,17 +71,21 @@ int main(int argc, char **argv)
         pthread_join(table.coders[i].thread_id, NULL);
         i++;
     }
+    pthread_join(monitor, NULL);
 
     i = 0;
     while (i < table.number_of_coders)
     {
         pthread_mutex_destroy(&table.dongle_locks[i]);
+        pthread_mutex_destroy(&table.dongle_queues[i].lock);
+        free(table.dongle_queues[i].nodes);
         i++;
     }
     pthread_mutex_destroy(&table.write_lock);
     pthread_mutex_destroy(&table.stop_lock);
     free(table.dongle_locks);
     free(table.coders);
+    free(table.dongle_queues);
 
     return (0);
 }

@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 typedef struct  s_table t_table;
 
@@ -32,14 +33,15 @@ typedef struct s_coder{
 
 typedef struct s_table{
     int             number_of_coders;
-    int             time_to_burnout;
-    int             time_to_compile;
-    int             time_to_debug;
-    int             time_to_refactor;
+    long long       time_to_burnout;
+    long long       time_to_compile;
+    long long       time_to_debug;
+    long long       time_to_refactor;
     int             number_of_compiles_required;
-    int             dongle_cooldown;
+    long long       dongle_cooldown;
     int             scheduler;
     int             stop_sim;
+    int             all_finished;
     long long       start_time;
     t_heap          *dongle_queues;
     t_coder         *coders;
@@ -50,6 +52,19 @@ typedef struct s_table{
 
 long long   ft_atoll(const char *str);
 long long   get_time_in_ms(void);
+void        ft_usleep(long long time_in_ms, t_table *table);
+
+void        heap_push(t_heap *heap, int coder_id, long long priority);
+void        heap_pop(t_heap *heap);
+int         is_coder_next(t_heap *heap, int coder_id);
+long long   get_priority(t_coder *coder);
+
+void        log_action(t_coder *coder, char *message);
+void        think_action(t_coder *coder);
+void        refactor_action(t_coder *coder);
+int         compile_action(t_coder *coder);
+
 void        *coder_routine(void *arg);
+void        *monitor_routine(void *arg);
 
 #endif
