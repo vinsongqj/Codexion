@@ -23,6 +23,10 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(HEADER)
 			@mkdir -p $(OBJ_DIR)
 			@$(CC) $(CFLAGS) -c $< -o $@
 
+debug:
+	$(CC) $(CFLAGS) -fsanitize=thread -g -Iinc src/*.c -lpthread -o codexion_debug
+	./codexion_debug 5 800 200 200 200 5 0 fifo
+
 clean:
 		@rm -rf $(OBJ_DIR)
 		@echo "$(RED)Objects removed$(RESET)"

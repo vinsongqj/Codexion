@@ -43,6 +43,7 @@ typedef struct s_table{
     int             stop_sim;
     int             all_finished;
     long long       start_time;
+    long long       *dongle_last;
     t_heap          *dongle_queues;
     t_coder         *coders;
     pthread_mutex_t stop_lock;

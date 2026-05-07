@@ -6,9 +6,10 @@ long long   get_priority(t_coder *coder)
 
     if (coder->table->scheduler == 0)
         return (get_time_in_ms());
-
+    pthread_mutex_lock(&coder->table->stop_lock);
     priority = coder->last_compile + coder->table->time_to_burnout;
-    return (priority - get_time_in_ms());
+    pthread_mutex_unlock(&coder->table->stop_lock);
+    return (priority);
 }
 
 static void    swap_nodes(t_node *a, t_node *b)
@@ -18,6 +19,15 @@ static void    swap_nodes(t_node *a, t_node *b)
     temp = *a;
     *a = *b;
     *b = temp;
+}
+
+static int is_higher_priority(t_node a, t_node b)
+{
+    if (a.priority < b.priority)
+        return (1);
+    if (a.priority == b.priority)
+        return (a.coder_id < b.coder_id);
+    return (0);
 }
 
 void    heap_push(t_heap *heap, int coder_id, long long priority)
@@ -30,7 +40,7 @@ void    heap_push(t_heap *heap, int coder_id, long long priority)
     heap->nodes[i].priority = priority;
     heap->size++;
 
-    while (i > 0 && heap->nodes[i].priority < heap->nodes[(i - 1) / 2].priority)
+    while (i > 0 && is_higher_priority(heap->nodes[i], heap->nodes[(i - 1) / 2]))
     {
         swap_nodes(&heap->nodes[i], &heap->nodes[(i - 1) / 2]);
         i = (i - 1) / 2;
@@ -54,6 +64,11 @@ void    heap_pop(t_heap *heap)
     }
     heap->nodes[0] = heap->nodes[heap->size - 1];
     heap->size--;
+    if (heap->size == 0)
+    {
+        pthread_mutex_unlock(&heap->lock);
+        return;
+    }
 
     i = 0;
     while (1)
@@ -62,9 +77,9 @@ void    heap_pop(t_heap *heap)
         left = 2 * i + 1;
         right = 2 * i + 2;
 
-        if (left < heap->size && heap->nodes[left].priority < heap->nodes[smallest].priority)
+        if (left < heap->size && is_higher_priority(heap->nodes[left], heap->nodes[smallest]))
             smallest = left;
-        if (right < heap->size && heap->nodes[right].priority < heap->nodes[smallest].priority)
+        if (right < heap->size && is_higher_priority(heap->nodes[right], heap->nodes[smallest]))
             smallest = right;
         if (smallest != i)
         {

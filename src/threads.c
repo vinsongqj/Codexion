@@ -8,22 +8,14 @@ void    *coder_routine(void *arg)
     coder = (t_coder *)arg;
     table = coder->table;
 
-    if (coder->id % 2 != 0)
+    if (coder->id % 2 == 0)
         ft_usleep(table->time_to_compile / 2, table);
-
     while (1)
     {
-        pthread_mutex_lock(&table->stop_lock);
-        if (table->stop_sim)
-        {
-            pthread_mutex_unlock(&table->stop_lock);
-            break;
-        }
-        pthread_mutex_unlock(&table->stop_lock);
-
-        debug_action(coder);
         if (!compile_action(coder))
             break;
+
+        debug_action(coder);
         
         refactor_action(coder);
 
@@ -60,6 +52,11 @@ void    *monitor_routine(void *arg)
                        table->coders[i].compiles_done >= table->number_of_compiles_required);
             if (!is_done && (get_time_in_ms() - table->coders[i].last_compile >= table->time_to_burnout))
             {
+                if (table->stop_sim)
+                {
+                    pthread_mutex_unlock(&table->stop_lock);
+                    return (NULL);
+                }
                 table->stop_sim = 1;
                 pthread_mutex_lock(&table->write_lock);
                 printf("%lld %d burned out\n",
@@ -76,8 +73,11 @@ void    *monitor_routine(void *arg)
         if (table->number_of_compiles_required != -1 && finished_count == table->number_of_coders)
         {
             pthread_mutex_lock(&table->stop_lock);
-            table->all_finished = 1;
-            table->stop_sim = 1;
+            if (!table->stop_sim)
+            {
+                table->all_finished = 1;
+                table->stop_sim = 1;
+            }
             pthread_mutex_unlock(&table->stop_lock);
             usleep(5000);
             return (NULL);

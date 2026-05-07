@@ -6,12 +6,13 @@ int main(int argc, char **argv)
     pthread_t   monitor;
     int         i;
 
-    if (argc != 9)
+    if (argc != 9 || atoi(argv[1]) < 1)
     {
         printf("Error: Wrong number of arguments.\n");
         return (1);
     }
     
+    memset(&table, 0, sizeof(t_table));
     table.start_time = get_time_in_ms();
     table.number_of_coders = atoi(argv[1]);
     table.time_to_burnout = ft_atoll(argv[2]);
@@ -20,7 +21,6 @@ int main(int argc, char **argv)
     table.time_to_refactor = ft_atoll(argv[5]);
     table.number_of_compiles_required = atoi(argv[6]);
     table.dongle_cooldown = ft_atoll(argv[7]);
-    table.stop_sim = 0;
     
     if (strcmp(argv[8], "fifo") == 0)
         table.scheduler = 0;
@@ -32,6 +32,9 @@ int main(int argc, char **argv)
     table.dongle_locks = malloc(sizeof(pthread_mutex_t) * table.number_of_coders);
     table.coders = malloc(sizeof(t_coder) * table.number_of_coders);
     table.dongle_queues = malloc(sizeof(t_heap) * table.number_of_coders);
+    table.dongle_last = malloc(sizeof(long long) * table.number_of_coders);
+    if (!table.dongle_last)
+        return (1);
     if (!table.dongle_locks || !table.coders || !table.dongle_queues)
         return (1);
 
@@ -45,6 +48,8 @@ int main(int argc, char **argv)
         pthread_mutex_init(&table.dongle_locks[i], NULL);
         pthread_mutex_init(&table.dongle_queues[i].lock, NULL);
         table.dongle_queues[i].nodes = malloc(sizeof(t_node) * table.number_of_coders);
+        if (!table.dongle_queues[i].nodes)
+            return (1);
         table.dongle_queues[i].size = 0;
 
         table.coders[i].id = i + 1;
@@ -53,6 +58,7 @@ int main(int argc, char **argv)
         table.coders[i].last_compile = table.start_time;
         table.coders[i].left_dongle = i;
         table.coders[i].right_dongle = (i + 1) % table.number_of_coders;
+        table.dongle_last[i] = table.start_time;
 
         i++;
     }
@@ -60,8 +66,6 @@ int main(int argc, char **argv)
     i = 0;
     while (i < table.number_of_coders)
     {
-        if (table.coders[i].id % 2 == 0)
-            usleep(200);
         pthread_create(&table.coders[i].thread_id, NULL, &coder_routine, &table.coders[i]);
         i++;
     }
@@ -88,6 +92,7 @@ int main(int argc, char **argv)
     free(table.dongle_locks);
     free(table.coders);
     free(table.dongle_queues);
+    free(table.dongle_last);
 
     return (0);
 }

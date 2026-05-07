@@ -5,19 +5,20 @@ void    log_action(t_coder *coder, char *message)
     long long   timestamp;
     
     timestamp = get_time_in_ms() - coder->table->start_time;
-    pthread_mutex_lock(&coder->table->write_lock);
     pthread_mutex_lock(&coder->table->stop_lock);
+    pthread_mutex_lock(&coder->table->write_lock);
     
     if (!coder->table->stop_sim)
         printf("%lld %d %s\n", timestamp, coder->id, message);
 
-    pthread_mutex_unlock(&coder->table->stop_lock);
     pthread_mutex_unlock(&coder->table->write_lock);
+    pthread_mutex_unlock(&coder->table->stop_lock);
 }
 
 void    debug_action(t_coder *coder)
 {
     log_action(coder, "is debugging");
+    ft_usleep(coder->table->time_to_debug, coder->table);
 }
 
 void    refactor_action(t_coder *coder)
@@ -30,6 +31,8 @@ static int  grab_dongle(t_coder *coder, int dongle_id)
 {
     t_heap      *heap;
     int         i;
+    long long   now;
+    long long   last;
 
     heap = &coder->table->dongle_queues[dongle_id];
     heap_push(heap, coder->id, get_priority(coder));
@@ -44,7 +47,15 @@ static int  grab_dongle(t_coder *coder, int dongle_id)
             heap_pop(heap);
             return (0);
         }
+        last = coder->table->dongle_last[dongle_id];
         pthread_mutex_unlock(&coder->table->stop_lock);
+        
+        now = get_time_in_ms();
+        if (now - last < coder->table->dongle_cooldown)
+        {
+            usleep(500);
+            continue;
+        }
         if (is_coder_next(heap, coder->id))
         {
             pthread_mutex_lock(&coder->table->dongle_locks[dongle_id]);
@@ -110,7 +121,12 @@ int compile_action(t_coder *coder)
     pthread_mutex_unlock(&coder->table->stop_lock);
     log_action(coder, "is compiling");
     ft_usleep(coder->table->time_to_compile, coder->table);
+
+    pthread_mutex_lock(&coder->table->stop_lock);
     coder->compiles_done++;
+    coder->table->dongle_last[first] = get_time_in_ms();
+    coder->table->dongle_last[second] = get_time_in_ms();
+    pthread_mutex_unlock(&coder->table->stop_lock);
 
     pthread_mutex_unlock(&coder->table->dongle_locks[first]);
     pthread_mutex_unlock(&coder->table->dongle_locks[second]);

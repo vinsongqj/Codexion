@@ -49,6 +49,6 @@ void    ft_usleep(long long time_in_ms, t_table *table)
             break;
         }
         pthread_mutex_unlock(&table->stop_lock);
-        usleep(100);
+        usleep(500);
     }
 }
